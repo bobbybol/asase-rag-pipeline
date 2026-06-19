@@ -1,16 +1,41 @@
 [project]
 name = "asase-rag-pipeline"
 version = "0.1.0"
-description = "Production RAG using LangChain & Vector DB"
+description = "Production RAG using LangChain & Chroma Vector DB"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
-    "langchain>=1.2.7",
-    "langchain-anthropic>=1.3.1",
+    "chromadb>=1.5.9",
+    "langchain>=1.3.10",
+    "langchain-anthropic>=1.4.6",
     "langchain-community===0.4.1",
-    "langchain-core>=1.2.7",
+    "langchain-core>=1.4.8",
     "langchain-google-genai>=4.2.5",
-    "langgraph>=1.0.7",
-    "pypdf>=6.13.3",
-    "python-dotenv>=1.2.1",
+    "python-dotenv>=1.2.2",
 ]
+
+[tool.uv]
+required-environments = [
+    "sys_platform == 'darwin' and platform_machine == 'x86_64'",
+]
+
+
+# "chromadb>=1.5.5",
+
+# "langchain-chroma>=1.1.0",
+# "langchain-community>=0.4.1",
+
+
+# "langchain-openai>=1.1.12",
+# "langchain-pinecone>=0.2.13",
+# "langchain-postgres>=0.0.17",
+# "langchain-text-splitters>=1.1.1",
+# "openai>=2.30.0",
+# "pgvector>=0.3.6",
+# "pinecone>=7.3.0",
+# "psycopg2-binary>=2.9.11",
+
+# "rank-bm25>=0.2.2",
+
+# error: Distribution `onnxruntime==1.27.0 @ registry+https://pypi.org/simple` can't be installed because it doesn't have a source distribution or wheel for the current platform hint: You're on macOS (`macosx_15_0_x86_64`), but `onnxruntime` (v1.27.0) only has wheels for the following platforms: `manylinux_2_27_aarch64`, `manylinux_2_27_x86_64`, `manylinux_2_28_aarch64`, `manylinux_2_28_x86_64`, `macosx_14_0_arm64`, `win_amd64`, `win_arm64`; 
+# consider adding "sys_platform == 'darwin' and platform_machine == 'x86_64'" to `tool.uv.required-environments` to ensure uv resolves to a version with compatible wheels
