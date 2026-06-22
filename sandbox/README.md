@@ -42,3 +42,5 @@ Exact person names don't have semantic meaning in documents
 Vector search fails => Hybrid search
 BM25 - the keyword champion, finds exact matches
 So best of both worlds is hybrid search: vector + keyword
+
+## 4. 
