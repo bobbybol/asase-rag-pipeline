@@ -1,16 +1,19 @@
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from dotenv import load_dotenv
+from langchain_classic.embeddings.cache import CacheBackedEmbeddings
+from langchain_classic.storage import LocalFileStore
+import tempfile
 import numpy
 
 load_dotenv()
 
-embeddings = GoogleGenerativeAIEmbeddings(model="gemini-embedding-2-preview")
+embeddings_model = GoogleGenerativeAIEmbeddings(model="gemini-embedding-2-preview")
 
 def basic_embeddings():
 
     # single text
     text = "What is Machine Learning?"
-    single_embedding = embeddings.embed_query(text)
+    single_embedding = embeddings_model.embed_query(text)
     print(f"Vector dimensions: {len(single_embedding)}")
     print(f"First 5 values: {single_embedding[:5]}")
     print(f"Vector norm: {numpy.linalg.norm(single_embedding):.4f}")
@@ -23,7 +26,7 @@ def batch_embeddings():
         "How does a neural network work?",
     ]
 
-    batch_embedding = embeddings.embed_documents(text)
+    batch_embedding = embeddings_model.embed_documents(text)
     for i, emb in enumerate(batch_embedding):
         print(f"Text {i+1} - Vector dimensions: {len(emb)}")
         print(f"Text {i+1} - First 5 values: {emb[:5]}")
@@ -45,8 +48,8 @@ def similarity_search():
     query = "What programming languages exist?"
 
     # embed documents and query
-    doc_vector = embeddings.embed_documents(docs)
-    query_vector = embeddings.embed_query(query)
+    doc_vector = embeddings_model.embed_documents(docs)
+    query_vector = embeddings_model.embed_query(query)
 
     # compute cosine similarities
     def cosine_similarity(vec1, vec2):
@@ -64,9 +67,35 @@ def similarity_search():
 
 
 
+# Caching ---
+def embedding_caching():
+    with tempfile.TemporaryDirectory() as tempdir:
+        store = LocalFileStore(root_path=tempdir)
+
+        cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
+            underlying_embeddings=embeddings_model,
+            document_embedding_cache=store,
+            namespace="exercise",
+        )
+
+        text = "What is Reinforcement Learning?"
+
+        # First call - hits API
+        print("First call (API):")
+        vectors1 = cached_embeddings.embed_documents([text])
+        print(f"  Embedded {len(vectors1)} documents")
+
+        # Second call - from cache
+        print("\nSecond call (Cache):")
+        vectors2 = cached_embeddings.embed_documents([text])
+        print(f"  Embedded {len(vectors2)} documents")
+
+        # Verify same results
+        print(f"\nSame vectors: {numpy.allclose(vectors1[0], vectors2[0])}")
+
 
 if __name__ == "__main__":
     # basic_embeddings()
     # batch_embeddings()
-    similarity_search()
-    # embedding_caching()
+    # similarity_search()
+    embedding_caching()

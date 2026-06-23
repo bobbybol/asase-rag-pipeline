@@ -1,5 +1,5 @@
 """
-Lecture 6: Supabase Connection
+Supabase Connection
 Demonstrates connecting to Supabase's managed pgvector
 """
 
