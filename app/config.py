@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     fallback_model: str = "gemini-2.5-flash-lite"
 
     # LangSmith
-    langsmith_tracing_v2: bool = True
+    langsmith_tracing: bool = True
     langsmith_api_key: str = ""
     langsmith_project: str = "production-api"
     langsmith_endpoint: str = "https://eu.api.smith.langchain.com"

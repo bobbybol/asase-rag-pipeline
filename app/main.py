@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting production API...", extra={"extra_data": {
         "environment": settings.app_env,
         "primary_model": settings.primary_model,
-        "tracing_enabled": settings.langsmith_tracing_v2,
+        "tracing_enabled": settings.langsmith_tracing,
     }})
 
     # Initialize components
