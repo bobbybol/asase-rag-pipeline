@@ -1,11 +1,12 @@
 """
-Production-Ready FastAPI + LangGraph Application
+Production-Ready FastAPI + LangGraph RAG Application
 
 Wires together:
+- Agentic RAG pipeline (hybrid retrieval → grade → rewrite → generate)
+- Supabase pgvector + BM25 hybrid search with RRF
 - Security pipeline (input sanitization, PII masking)
 - Response caching
 - Rate limiting (slowapi)
-- LangGraph agent (with retries + fallback)
 - Structured logging + metrics
 - LangSmith tracing
 - Health checks
@@ -23,14 +24,18 @@ from slowapi.errors import RateLimitExceeded
 from langsmith import traceable
 from dotenv import load_dotenv
 
+from langchain_core.documents import Document
+
 from app.config import get_settings
 from app.models import (
-    ChatRequest, ChatResponse,
+    ChatRequest, ChatResponse, RetrievedSource,
     HealthResponse, MetricsResponse, ErrorResponse,
+    IngestRequest, IngestResponse,
 )
 from app.security import SecurityPipeline
 from app.cache import ResponseCache
 from app.monitoring import get_logger, MetricsCollector, RequestTimer
+from app.rag import RAGService
 from app.agent import ProductionAgent
 
 load_dotenv()
@@ -41,6 +46,7 @@ load_dotenv()
 security: SecurityPipeline = None
 cache: ResponseCache = None
 metrics: MetricsCollector = None
+rag_service: RAGService = None
 agent: ProductionAgent = None
 logger = get_logger()
 
@@ -53,7 +59,7 @@ async def lifespan(app: FastAPI):
     Initialize all components on startup, clean up on shutdown.
     This is the modern FastAPI pattern (replaces @app.on_event).
     """
-    global security, cache, metrics, agent
+    global security, cache, metrics, rag_service, agent
 
     settings = get_settings()
 
@@ -67,7 +73,20 @@ async def lifespan(app: FastAPI):
     security = SecurityPipeline()
     cache = ResponseCache(ttl_seconds=settings.cache_ttl_seconds)
     metrics = MetricsCollector()
-    agent = ProductionAgent()
+
+    # RAG: connect to Supabase pgvector and warm up BM25 from existing docs
+    rag_service = RAGService(
+        database_url=settings.supabase_database_url,
+        collection_name=settings.rag_collection_name,
+        k=settings.rag_k,
+    )
+    doc_count = rag_service.load_existing_docs()
+    logger.info("RAG service ready", extra={"extra_data": {
+        "collection": settings.rag_collection_name,
+        "docs_loaded": doc_count,
+    }})
+
+    agent = ProductionAgent(rag_service=rag_service)
 
     logger.info("All components initialized. Ready to serve requests.")
 
@@ -175,6 +194,14 @@ async def chat(request: Request, body: ChatRequest):
 
         response_text = result["response"]
         model_used = result["model_used"]
+        sources = [
+            RetrievedSource(
+                content=s["content"],
+                source=s.get("source"),
+                metadata=s.get("metadata", {}),
+            )
+            for s in result.get("sources", [])
+        ]
 
         # ---- Step 4: Output Validation ----
         validated_response, output_warnings = security.check_output(response_text)
@@ -204,6 +231,7 @@ async def chat(request: Request, body: ChatRequest):
         "thread_id": body.thread_id,
         "model_used": model_used,
         "latency_ms": round(timer.elapsed_ms, 2),
+        "sources_retrieved": len(sources),
     }})
 
     return ChatResponse(
@@ -213,11 +241,44 @@ async def chat(request: Request, body: ChatRequest):
         cached=False,
         processing_time_ms=round(timer.elapsed_ms, 2),
         security_notes=security_notes,
+        sources=sources,
     )
     
     
     
     
+@app.post("/ingest", response_model=IngestResponse)
+@limiter.limit("10/minute")
+async def ingest(request: Request, body: IngestRequest):
+    """
+    Add documents to the RAG knowledge base.
+
+    Documents are embedded and stored in Supabase pgvector, and the
+    in-memory BM25 index is rebuilt so hybrid search picks them up immediately.
+    """
+    documents = [
+        Document(page_content=doc.content, metadata=doc.metadata)
+        for doc in body.documents
+    ]
+
+    try:
+        rag_service.add_documents(documents)
+    except Exception as e:
+        logger.error("Ingestion failed", extra={"extra_data": {"error": str(e)}})
+        raise HTTPException(status_code=500, detail="Failed to ingest documents.")
+
+    logger.info("Documents ingested", extra={"extra_data": {
+        "count": len(documents),
+        "total_indexed": rag_service.doc_count,
+    }})
+
+    return IngestResponse(
+        ingested_count=len(documents),
+        collection=get_settings().rag_collection_name,
+        total_indexed=rag_service.doc_count,
+    )
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health():
     """Health check for Docker/Kubernetes."""
@@ -225,6 +286,7 @@ async def health():
 
     checks = {
         "agent": agent is not None,
+        "rag": rag_service is not None,
         "security": security is not None,
         "cache": cache is not None,
     }
