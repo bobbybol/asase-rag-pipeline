@@ -1,7 +1,7 @@
 [project]
 name = "asase-rag-pipeline"
 version = "0.1.0"
-description = "Production RAG using LangChain & Chroma Vector DB"
+description = "Agentic RAG pipeline with hybrid search, Supabase pgvector, and LangGraph"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

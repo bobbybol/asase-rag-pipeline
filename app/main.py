@@ -101,8 +101,11 @@ limiter = Limiter(key_func=get_remote_address)
 
 # === FastAPI App ===
 app = FastAPI(
-    title="Production LangGraph API",
-    description="A production-ready chat API with security, caching, and observability.",
+    title="Asase RAG Pipeline",
+    description=(
+        "Agentic RAG over a mini-grid and smart metering knowledge base. "
+        "Hybrid BM25 + pgvector retrieval with a self-correcting LangGraph retrieval loop."
+    ),
     version="1.0.0",
     lifespan=lifespan,
 )
