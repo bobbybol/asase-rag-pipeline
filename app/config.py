@@ -10,7 +10,7 @@ from functools import lru_cache
 # Load .env into os.environ so LangChain/LangSmith SDK can read tracing config
 load_dotenv()
 
-class Settings(BaseSettings): 
+class Settings(BaseSettings):
 
     # LLM Configuration
     google_api_key: str
@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     rate_limit: str = "20/minute"
     cache_ttl_seconds: int = 300
     max_retries: int = 3
+
+    # RAG / Vector store
+    supabase_database_url: str = ""
+    rag_collection_name: str = "minigrid_docs"
+    rag_k: int = 5
+    rag_relevance_threshold: float = 0.5
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
