@@ -16,6 +16,7 @@ dependencies = [
     "langchain-google-genai>=4.2.5",
     "langchain-postgres>=0.0.17",
     "langsmith>=0.8.17",
+    "networkx>=3.6.1",
     "pgvector>=0.3.6",
     "psycopg2-binary===2.9.11",
     "pydantic-settings>=2.14.1",
