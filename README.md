@@ -17,18 +17,35 @@ The knowledge base covers technical material on mini-grids, prepaid metering (ST
 ```
 POST /chat
     │
-    ├─ Security pipeline     (injection check, PII masking)
-    ├─ Response cache        (TTL-based, keyed on cleaned query)
+    ├─ Rate limiter          (slowapi — 20 req/min per IP, returns 429 on breach)
     │
-    └─ AgenticRAG (LangGraph)
+    ├─ LangSmith trace       (wraps the full request for end-to-end observability)
+    │
+    ├─ Input security        (prompt injection detection, PII masking)
+    │   └─ 400 if blocked
+    │
+    ├─ Response cache        (TTL-based, keyed on cleaned query — returns early on hit)
+    │
+    ├─ AgenticRAG (LangGraph)
+    │       │
+    │       ├─ retrieve      Hybrid search: BM25 + pgvector, fused via RRF
+    │       ├─ grade         LLM scores each retrieved doc 0–1 for relevance
+    │       ├─ rewrite ──►   If score < threshold and retries remain,
+    │       │   └─ retrieve  reformulate query and search again
+    │       ├─ generate      Grounded answer from primary LLM (Gemini Flash)
+    │       │                Falls back to secondary model on failure
+    │       └─ fallback      Graceful message when retrieval fails completely
+    │
+    ├─ Output security       (validates and sanitises the generated response)
+    │
+    ├─ Cache store           (write validated response for future cache hits)
+    │
+    ├─ Metrics               (latency, token estimates, error rate, cache hit rate)
+    │
+    └─ Structured log        (thread ID, model used, latency, sources retrieved)
             │
-            ├─ retrieve      Hybrid search: BM25 + pgvector, fused via RRF
-            ├─ grade         LLM scores each retrieved doc 0–1 for relevance
-            ├─ rewrite ──►   If score < threshold and retries remain,
-            │   └─ retrieve  reformulate query and search again
-            ├─ generate      Grounded answer from primary LLM (Gemini Flash)
-            │                Falls back to secondary model on failure
-            └─ fallback      Graceful message when retrieval fails completely
+            ▼
+        JSON response        (response, sources, model_used, processing_time_ms, …)
 ```
 
 Retrieved sources are returned alongside every response so callers can see exactly what grounded the answer.
