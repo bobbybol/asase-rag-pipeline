@@ -11,7 +11,7 @@ GraphRAG builds a knowledge graph from documents, enabling:
 - Relationship-based retrieval
 - Global summarization of topics
 
-This lesson introduces the concepts. For full implementation,
+This introduces just the concepts. For full implementation,
 see Microsoft's GraphRAG library or LangGraph's graph-based retrieval.
 """
 
